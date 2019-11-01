@@ -1,0 +1,32 @@
+{
+  "name": "wormhole-client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist/umd/index.min.js",
+  "module": "./dist/esm5/index.js",
+  "typings": "./dist/esm/index.d.ts",
+  "esnext": "./dist/esm/index.js",
+  "scripts": {
+    "dev": "tsc --watch",
+    "build:es5": "tsc",
+    "build:es6": "tsc --target es6 --outdir dist/esm --module esnext",
+    "build:umd": "webpack --mode=production",
+    "build": "npm run build:es5 && npm run build:es6 && npm run build:es7",
+    "webpack": "webpack --mode=development --watch",
+    "tslint": "tslint -c tslint.json 'src/**/*.ts'"
+  },
+  "author": "Petr Chalov",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^12.12.3",
+    "awesome-typescript-loader": "^5.2.1",
+    "ts-loader": "^6.2.1",
+    "tslint": "^5.20.0",
+    "tslint-webpack-plugin": "^2.1.0",
+    "typescript": "^3.6.4",
+    "uglifyjs-webpack-plugin": "^2.2.0",
+    "webpack": "^4.41.2",
+    "webpack-cli": "^3.3.10",
+    "webpack-config-utils": "^2.3.1"
+  }
+}
