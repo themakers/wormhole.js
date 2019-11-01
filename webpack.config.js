@@ -85,7 +85,7 @@ module.exports = {
   ],
   output: {
     filename: 'bundle.js',
-    path: path.resolve(__dirname, 'dist', 'umd'),
+    path: path.resolve(__dirname, 'build', 'umd'),
     libraryTarget: 'umd',
     library: 'Wormhole',
     libraryExport: 'default',
