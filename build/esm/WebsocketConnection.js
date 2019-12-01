@@ -11,7 +11,7 @@ export default class WebsocketConnection extends EventEmitter {
         this.queue = [];
         this.reconnects = 0;
         this.freeze = false;
-        this.options = Object.assign({}, defaultOptions, options);
+        this.options = Object.assign({}, defaultOptions, options || {});
         this.connectionUrl = connectionUrl;
     }
     connect() {

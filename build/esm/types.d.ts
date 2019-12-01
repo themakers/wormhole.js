@@ -9,6 +9,3 @@ export interface IWormholeClientOptions {
 export interface IWormholeRequest {
     [key: string]: any;
 }
-export interface IWormholeMetadata {
-    [key: string]: string;
-}

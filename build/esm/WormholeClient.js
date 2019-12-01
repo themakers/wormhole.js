@@ -14,7 +14,7 @@ export default class WormholeClient extends EventEmitter {
         if (!connectionUrl) {
             throw new Error("connectionUrl required");
         }
-        this.options = options;
+        this.options = options || {};
         this.connection = new WebsocketConnection(connectionUrl, this.options.connectionOptions);
         this.connection.on("message", this._onConnectionMessage);
     }
@@ -38,8 +38,8 @@ export default class WormholeClient extends EventEmitter {
     getRemoteProxy() {
         const self = this;
         const path = [];
-        function call(request, metadata) {
-            return self.createRequest(path.join("."), request, metadata);
+        function call(request) {
+            return self.createRequest(path.join("."), request);
         }
         const handler = {
             get(_, part) {
@@ -52,8 +52,8 @@ export default class WormholeClient extends EventEmitter {
         const proxy = new Proxy(call, handler);
         return proxy;
     }
-    createRequest(path, request, metadata) {
-        return new Request(path, request, metadata, this.connection);
+    createRequest(path, request) {
+        return new Request(path, request, this.connection);
     }
     onConnectionMessage(event) {
         try {

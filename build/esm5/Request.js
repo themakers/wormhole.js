@@ -12,9 +12,8 @@ var ERRORS;
     ERRORS[ERRORS["ERROR_PARSING_RESPONSE"] = 4] = "ERROR_PARSING_RESPONSE";
 })(ERRORS || (ERRORS = {}));
 var WormholeRequest = /** @class */ (function () {
-    function WormholeRequest(path, request, metadata, connection) {
+    function WormholeRequest(path, request, connection) {
         if (request === void 0) { request = []; }
-        if (metadata === void 0) { metadata = {}; }
         this.callbacks = new Map();
         this.id = util_1.uuid();
         // tslint:disable-next-line:variable-name
@@ -24,7 +23,6 @@ var WormholeRequest = /** @class */ (function () {
         this.createPromise();
         this.path = path;
         this.request = this.transformRequest(request);
-        this.metadata = null; // metadata;
         this.connection = connection;
         this.connection.on("message", this._onConnectionMessage);
         this.connection.on("error", this._onConnectionError);
@@ -45,7 +43,7 @@ var WormholeRequest = /** @class */ (function () {
         return this.promise.finally(onFinally);
     };
     WormholeRequest.prototype.send = function () {
-        this.sendMessage(WORMHOLE_TYPE_CALL, { ID: this.id, Ref: this.path, Meta: this.metadata, Vars: this.request });
+        this.sendMessage(WORMHOLE_TYPE_CALL, { ID: this.id, Ref: this.path, Vars: this.request });
     };
     WormholeRequest.prototype.sendMessage = function (type, payload) {
         var message = { Payload: payload, Type: type };

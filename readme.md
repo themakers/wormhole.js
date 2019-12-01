@@ -82,22 +82,30 @@ try {
 }
 ```
 
-#### Send metadata
-
-```
-client.remote.Greeter.Hello(payload, metadata);
-```
-
 ##### Example
 
 ```
 client.remote.Greeter.Hello({
     Message: "test",
-}, {
-    Authorization: "JWT ...",
 });
 ```
 
+
+### Register provider
+
+```
+ client.provide(name: string, methods: Object)
+
+```
+
+#### Example
+```
+  client.provide('Greeter', {
+    Hello: () => {
+      return 'Hello'
+    }
+  })
+```
 
 ### Use in typescript
 
@@ -112,3 +120,4 @@ try {
     console.log("error", error);
 }
 ```
+

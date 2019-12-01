@@ -10,7 +10,7 @@ var ERRORS;
     ERRORS[ERRORS["ERROR_PARSING_RESPONSE"] = 4] = "ERROR_PARSING_RESPONSE";
 })(ERRORS || (ERRORS = {}));
 export default class WormholeRequest {
-    constructor(path, request = [], metadata = {}, connection) {
+    constructor(path, request = [], connection) {
         this.callbacks = new Map();
         this.id = uuid();
         // tslint:disable-next-line:variable-name
@@ -20,7 +20,6 @@ export default class WormholeRequest {
         this.createPromise();
         this.path = path;
         this.request = this.transformRequest(request);
-        this.metadata = null; // metadata;
         this.connection = connection;
         this.connection.on("message", this._onConnectionMessage);
         this.connection.on("error", this._onConnectionError);
@@ -41,7 +40,7 @@ export default class WormholeRequest {
         return this.promise.finally(onFinally);
     }
     send() {
-        this.sendMessage(WORMHOLE_TYPE_CALL, { ID: this.id, Ref: this.path, Meta: this.metadata, Vars: this.request });
+        this.sendMessage(WORMHOLE_TYPE_CALL, { ID: this.id, Ref: this.path, Vars: this.request });
     }
     sendMessage(type, payload) {
         const message = { Payload: payload, Type: type };

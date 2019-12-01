@@ -27,7 +27,7 @@ var WebsocketConnection = /** @class */ (function (_super) {
         _this.queue = [];
         _this.reconnects = 0;
         _this.freeze = false;
-        _this.options = Object.assign({}, defaultOptions, options);
+        _this.options = Object.assign({}, defaultOptions, options || {});
         _this.connectionUrl = connectionUrl;
         return _this;
     }

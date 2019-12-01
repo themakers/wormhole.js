@@ -30,7 +30,7 @@ var WormholeClient = /** @class */ (function (_super) {
         if (!connectionUrl) {
             throw new Error("connectionUrl required");
         }
-        _this.options = options;
+        _this.options = options || {};
         _this.connection = new WebsocketConnection_1.default(connectionUrl, _this.options.connectionOptions);
         _this.connection.on("message", _this._onConnectionMessage);
         return _this;
@@ -59,8 +59,8 @@ var WormholeClient = /** @class */ (function (_super) {
     WormholeClient.prototype.getRemoteProxy = function () {
         var self = this;
         var path = [];
-        function call(request, metadata) {
-            return self.createRequest(path.join("."), request, metadata);
+        function call(request) {
+            return self.createRequest(path.join("."), request);
         }
         var handler = {
             get: function (_, part) {
@@ -73,8 +73,8 @@ var WormholeClient = /** @class */ (function (_super) {
         var proxy = new Proxy(call, handler);
         return proxy;
     };
-    WormholeClient.prototype.createRequest = function (path, request, metadata) {
-        return new Request_1.default(path, request, metadata, this.connection);
+    WormholeClient.prototype.createRequest = function (path, request) {
+        return new Request_1.default(path, request, this.connection);
     };
     WormholeClient.prototype.onConnectionMessage = function (event) {
         try {

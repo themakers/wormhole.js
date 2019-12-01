@@ -1,4 +1,3 @@
-import { IWormholeMetadata } from "./types";
 import WebsocketConnection from "./WebsocketConnection";
 export default class WormholeRequest {
     private static createError;
@@ -7,13 +6,12 @@ export default class WormholeRequest {
     private reject;
     private readonly path;
     private readonly request;
-    private readonly metadata;
     private connection;
     private callbacks;
     private id;
     private _onConnectionMessage;
     private _onConnectionError;
-    constructor(path: string, request: any, metadata: IWormholeMetadata, connection: WebsocketConnection);
+    constructor(path: string, request: any, connection: WebsocketConnection);
     then(onFulfilled: () => any, onRejected: any): Promise<any>;
     catch(onRejected: () => any): Promise<any>;
     finally(onFinally: () => any): Promise<any>;

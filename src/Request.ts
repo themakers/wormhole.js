@@ -1,4 +1,3 @@
-import {IWormholeMetadata} from "./types";
 import {uuid} from "./util";
 import {transformRequest, transformResponse} from "./util";
 import WebsocketConnection from "./WebsocketConnection";
@@ -25,7 +24,6 @@ export default class WormholeRequest {
     private reject: (error: any) => any;
     private readonly path: string;
     private readonly request: any;
-    private readonly metadata: IWormholeMetadata;
     private connection: WebsocketConnection;
     private callbacks: Map<string, () => any> = new Map<string, () => any>();
     private id: string = uuid();
@@ -37,13 +35,11 @@ export default class WormholeRequest {
     constructor(
         path: string,
         request: any = [],
-        metadata: IWormholeMetadata = {},
         connection: WebsocketConnection,
     ) {
         this.createPromise();
         this.path = path;
         this.request = this.transformRequest(request);
-        this.metadata = null; // metadata;
         this.connection = connection;
         this.connection.on("message", this._onConnectionMessage);
         this.connection.on("error", this._onConnectionError);
@@ -63,7 +59,7 @@ export default class WormholeRequest {
     }
 
     private send() {
-        this.sendMessage(WORMHOLE_TYPE_CALL, {ID: this.id, Ref: this.path, Meta: this.metadata, Vars: this.request});
+        this.sendMessage(WORMHOLE_TYPE_CALL, {ID: this.id, Ref: this.path, Vars: this.request});
     }
 
     private sendMessage(type: string, payload: any) {
