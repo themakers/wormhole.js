@@ -1,9 +1,7 @@
 "use strict";
-function __export(m) {
-    for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
-}
 Object.defineProperty(exports, "__esModule", { value: true });
 var WebsocketConnection_1 = require("./WebsocketConnection");
 exports.WebsocketConnection = WebsocketConnection_1.default;
-__export(require("./WormholeClient"));
+var WormholeClient_1 = require("./WormholeClient");
+exports.default = WormholeClient_1.default;
 //# sourceMappingURL=index.js.map

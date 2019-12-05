@@ -14,7 +14,7 @@ export default class WormholeClient extends EventEmitter {
   // tslint:disable-next-line:variable-name
   private _onConnectionMessage = this.onConnectionMessage.bind(this);
 
-  constructor(connectionUrl: string, options: IWormholeClientOptions) {
+  constructor(connectionUrl: string, options?: IWormholeClientOptions) {
     super();
     if (!connectionUrl) {
       throw new Error("connectionUrl required");

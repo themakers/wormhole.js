@@ -1,3 +1,4 @@
 import WebsocketConnection from "./WebsocketConnection";
-export * from "./WormholeClient";
+import WormholeClient from "./WormholeClient";
+export default WormholeClient;
 export { WebsocketConnection };
