@@ -1,1 +1,1 @@
-export default function (...args: any[]): string;
+export default function (...args: any[]): {};

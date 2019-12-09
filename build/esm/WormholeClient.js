@@ -28,33 +28,13 @@ class WormholeClient extends EventEmitter {
         this.connection.disconnect();
         return this;
     }
-    // public get remote() {
-    //   return this.getRemoteProxy();
-    // }
+    get remote() {
+        return this.getRemoteProxy();
+    }
     provide(module, methods) {
         Object.assign(this.provides, mapProvide(module, methods));
         return this;
     }
-    // private getRemoteProxy() {
-    //   const self = this;
-    //   const path: string[] = [];
-    //
-    //   function call(request: IWormholeRequest) {
-    //     return self.createRequest(path.join("."), request);
-    //   }
-    //
-    //   const handler = {
-    //     get(_, part: string) {
-    //       if (!part.startsWith("Symbol")) {
-    //         path.push(part);
-    //       }
-    //       return proxy;
-    //     },
-    //   };
-    //
-    //   const proxy = new Proxy(call, handler);
-    //   return proxy;
-    // }
     createRequest(path, request) {
         return new Request(path, request, this.connection);
     }
@@ -68,6 +48,23 @@ class WormholeClient extends EventEmitter {
         catch (e) {
             // Do nothing
         }
+    }
+    getRemoteProxy() {
+        const self = this;
+        const path = [];
+        function call(request) {
+            return self.createRequest(path.join("."), request);
+        }
+        const handler = {
+            get(_, part) {
+                if (!part.startsWith("Symbol")) {
+                    path.push(part);
+                }
+                return proxy;
+            },
+        };
+        const proxy = new Proxy(call, handler);
+        return proxy;
     }
     callProvideMethod(data) {
         const key = data.Ref;
@@ -100,9 +97,17 @@ class WormholeClient extends EventEmitter {
     }
 }
 export default function (...args) {
-    // tslint:disable-next-line:no-console
-    console.log(args);
-    return "test";
+    // @ts-ignore
+    const client = new WormholeClient(...args);
+    return new Proxy({}, {
+        get(_, part) {
+            const firstLetter = part[0];
+            if (firstLetter === firstLetter.toUpperCase()) {
+                return client.remote;
+            }
+            return client[part];
+        },
+    });
 }
 const mapProvide = (module, methods) => {
     const result = {};
