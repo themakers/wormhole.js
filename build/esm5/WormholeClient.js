@@ -12,6 +12,13 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __spreadArrays = (this && this.__spreadArrays) || function () {
+    for (var s = 0, i = 0, il = arguments.length; i < il; i++) s += arguments[i].length;
+    for (var r = Array(s), k = 0, i = 0; i < il; i++)
+        for (var a = arguments[i], j = 0, jl = a.length; j < jl; j++, k++)
+            r[k] = a[j];
+    return r;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var events_1 = require("events");
 var Request_1 = require("./Request");
@@ -56,6 +63,20 @@ var WormholeClient = /** @class */ (function (_super) {
         Object.assign(this.provides, mapProvide(module, methods));
         return this;
     };
+    WormholeClient.prototype.createRequest = function (path, request) {
+        return new Request_1.default(path, request, this.connection);
+    };
+    WormholeClient.prototype.onConnectionMessage = function (event) {
+        try {
+            var data = JSON.parse(event.data);
+            if (data.Type === WORMHOLE_TYPE_CALL) {
+                this.callProvideMethod(data.Payload);
+            }
+        }
+        catch (e) {
+            // Do nothing
+        }
+    };
     WormholeClient.prototype.getRemoteProxy = function () {
         var self = this;
         var path = [];
@@ -72,20 +93,6 @@ var WormholeClient = /** @class */ (function (_super) {
         };
         var proxy = new Proxy(call, handler);
         return proxy;
-    };
-    WormholeClient.prototype.createRequest = function (path, request) {
-        return new Request_1.default(path, request, this.connection);
-    };
-    WormholeClient.prototype.onConnectionMessage = function (event) {
-        try {
-            var data = JSON.parse(event.data);
-            if (data.Type === WORMHOLE_TYPE_CALL) {
-                this.callProvideMethod(data.Payload);
-            }
-        }
-        catch (e) {
-            // Do nothing
-        }
     };
     WormholeClient.prototype.callProvideMethod = function (data) {
         var _a;
@@ -120,7 +127,24 @@ var WormholeClient = /** @class */ (function (_super) {
     };
     return WormholeClient;
 }(events_1.EventEmitter));
-exports.default = WormholeClient;
+function default_1() {
+    var args = [];
+    for (var _i = 0; _i < arguments.length; _i++) {
+        args[_i] = arguments[_i];
+    }
+    // @ts-ignore
+    var client = new (WormholeClient.bind.apply(WormholeClient, __spreadArrays([void 0], args)))();
+    return new Proxy({}, {
+        get: function (_, part) {
+            var firstLetter = part[0];
+            if (firstLetter === firstLetter.toUpperCase()) {
+                return client.remote;
+            }
+            return client[part];
+        },
+    });
+}
+exports.default = default_1;
 var mapProvide = function (module, methods) {
     var result = {};
     for (var method in methods) {

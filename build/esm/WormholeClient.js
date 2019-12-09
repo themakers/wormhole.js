@@ -4,7 +4,7 @@ import { transformRequest, transformResponse } from "./util";
 import WebsocketConnection from "./WebsocketConnection";
 const WORMHOLE_TYPE_CALL = "call";
 const WORMHOLE_TYPE_RESULT = "result";
-export default class WormholeClient extends EventEmitter {
+class WormholeClient extends EventEmitter {
     constructor(connectionUrl, options) {
         super();
         this.options = {};
@@ -28,30 +28,33 @@ export default class WormholeClient extends EventEmitter {
         this.connection.disconnect();
         return this;
     }
-    get remote() {
-        return this.getRemoteProxy();
-    }
+    // public get remote() {
+    //   return this.getRemoteProxy();
+    // }
     provide(module, methods) {
         Object.assign(this.provides, mapProvide(module, methods));
         return this;
     }
-    getRemoteProxy() {
-        const self = this;
-        const path = [];
-        function call(request) {
-            return self.createRequest(path.join("."), request);
-        }
-        const handler = {
-            get(_, part) {
-                if (!part.startsWith("Symbol")) {
-                    path.push(part);
-                }
-                return proxy;
-            },
-        };
-        const proxy = new Proxy(call, handler);
-        return proxy;
-    }
+    // private getRemoteProxy() {
+    //   const self = this;
+    //   const path: string[] = [];
+    //
+    //   function call(request: IWormholeRequest) {
+    //     return self.createRequest(path.join("."), request);
+    //   }
+    //
+    //   const handler = {
+    //     get(_, part: string) {
+    //       if (!part.startsWith("Symbol")) {
+    //         path.push(part);
+    //       }
+    //       return proxy;
+    //     },
+    //   };
+    //
+    //   const proxy = new Proxy(call, handler);
+    //   return proxy;
+    // }
     createRequest(path, request) {
         return new Request(path, request, this.connection);
     }
@@ -95,6 +98,11 @@ export default class WormholeClient extends EventEmitter {
         const message = { Payload: payload, Type: type };
         this.connection.send(JSON.stringify(message));
     }
+}
+export default function (...args) {
+    // tslint:disable-next-line:no-console
+    console.log(args);
+    return "test";
 }
 const mapProvide = (module, methods) => {
     const result = {};

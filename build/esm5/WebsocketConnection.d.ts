@@ -9,6 +9,7 @@ export default class WebsocketConnection extends EventEmitter {
     private reconnection;
     private reconnects;
     private freeze;
+    private disconnectTimeout;
     constructor(connectionUrl: string, options: IWebsocketConnectionOptions);
     connect(): this;
     tryConnect(): this;

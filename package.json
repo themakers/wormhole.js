@@ -7,7 +7,7 @@
   "typings": "./build/esm/index.d.ts",
   "esnext": "./build/esm/index.js",
   "scripts": {
-    "dev": "tsc --watch",
+    "dev": "tsc-watch -b --onSuccess \"npm run build:umd \"",
     "build:es5": "tsc",
     "build:es6": "tsc --target es6 --outdir build/esm --module esnext",
     "build:umd": "webpack --mode=production",
@@ -21,6 +21,7 @@
     "@types/node": "^12.12.3",
     "awesome-typescript-loader": "^5.2.1",
     "ts-loader": "^6.2.1",
+    "tsc-watch": "^4.0.0",
     "tslint": "^5.20.0",
     "tslint-webpack-plugin": "^2.1.0",
     "typescript": "^3.6.4",

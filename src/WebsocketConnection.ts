@@ -2,9 +2,10 @@ import {EventEmitter} from "events";
 import {IWebsocketConnectionOptions} from "./types";
 
 const defaultOptions: IWebsocketConnectionOptions = {
+  maxConnectionTimeout: 10,
   maxReconnects: Infinity,
   reconnect: true,
-  reconnectTimeout: 10,
+  reconnectTimeout: 1,
 };
 
 export default class WebsocketConnection extends EventEmitter {
@@ -15,9 +16,12 @@ export default class WebsocketConnection extends EventEmitter {
   private reconnection: any;
   private reconnects: number = 0;
   private freeze: boolean = false;
+  private disconnectTimeout: any = null;
 
   constructor(connectionUrl: string, options: IWebsocketConnectionOptions) {
     super();
+    // EventEmitter hack
+    this.setMaxListeners(Number.MAX_SAFE_INTEGER);
     this.options = Object.assign({}, defaultOptions, options || {} as IWebsocketConnectionOptions);
     this.connectionUrl = connectionUrl;
   }
@@ -37,6 +41,7 @@ export default class WebsocketConnection extends EventEmitter {
       socket.onclose = (e) => this.onClose(e);
       socket.onerror = () => this.onError();
       socket.onmessage = (e) => this.onMessage(e);
+      this.disconnectTimeout = setTimeout(() => socket.close(), this.options.maxConnectionTimeout * 1000);
     } catch (e) {
       this.emit("error", e);
     }
@@ -62,7 +67,7 @@ export default class WebsocketConnection extends EventEmitter {
         this.reconnects++;
         this.reconnection = null;
         this.tryConnect();
-      }, this.options.reconnectTimeout);
+      }, this.options.reconnectTimeout * 1000);
     }
   }
 
@@ -74,6 +79,7 @@ export default class WebsocketConnection extends EventEmitter {
   }
 
   private onOpen(socket) {
+    clearTimeout(this.disconnectTimeout);
     this.reconnects = 0;
     this.socket = socket;
     this.drain();
@@ -81,14 +87,14 @@ export default class WebsocketConnection extends EventEmitter {
   }
 
   private onClose(event: CloseEvent) {
+    clearTimeout(this.disconnectTimeout);
     this.socket = null;
     this.emit("disconnect", event);
-    if (!event.wasClean) {
-      this.tryReconnect();
-    }
+    this.tryReconnect();
   }
 
   private onError() {
+    clearTimeout(this.disconnectTimeout);
     this.socket = null;
     this.tryReconnect();
   }
@@ -98,6 +104,7 @@ export default class WebsocketConnection extends EventEmitter {
   }
 
   private tryReconnect() {
+    // tslint:disable-next-line:no-console
     if (this.reconnects < this.options.maxReconnects) {
       this.reconnect();
     } else if (this.reconnects === this.options.maxReconnects && !this.freeze) {

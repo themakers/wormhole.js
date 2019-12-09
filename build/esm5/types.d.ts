@@ -1,4 +1,5 @@
 export interface IWebsocketConnectionOptions {
+    maxConnectionTimeout: number;
     reconnect: boolean;
     maxReconnects: number;
     reconnectTimeout: number;

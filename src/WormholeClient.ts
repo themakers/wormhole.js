@@ -7,7 +7,7 @@ import WebsocketConnection from "./WebsocketConnection";
 const WORMHOLE_TYPE_CALL = "call";
 const WORMHOLE_TYPE_RESULT = "result";
 
-export default class WormholeClient extends EventEmitter {
+class WormholeClient extends EventEmitter {
   private options: IWormholeClientOptions = {} as IWormholeClientOptions;
   private readonly connection: WebsocketConnection;
   private provides: { [key: string]: any } = {};
@@ -46,6 +46,21 @@ export default class WormholeClient extends EventEmitter {
     return this;
   }
 
+  private createRequest(path: string, request: IWormholeRequest) {
+    return new Request(path, request, this.connection);
+  }
+
+  private onConnectionMessage(event: MessageEvent) {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.Type === WORMHOLE_TYPE_CALL) {
+        this.callProvideMethod(data.Payload);
+      }
+    } catch (e) {
+      // Do nothing
+    }
+  }
+
   private getRemoteProxy() {
     const self = this;
     const path: string[] = [];
@@ -65,21 +80,6 @@ export default class WormholeClient extends EventEmitter {
 
     const proxy = new Proxy(call, handler);
     return proxy;
-  }
-
-  private createRequest(path: string, request: IWormholeRequest) {
-    return new Request(path, request, this.connection);
-  }
-
-  private onConnectionMessage(event: MessageEvent) {
-    try {
-      const data = JSON.parse(event.data);
-      if (data.Type === WORMHOLE_TYPE_CALL) {
-        this.callProvideMethod(data.Payload);
-      }
-    } catch (e) {
-      // Do nothing
-    }
   }
 
   private callProvideMethod(data: any) {
@@ -113,6 +113,22 @@ export default class WormholeClient extends EventEmitter {
     const message = {Payload: payload, Type: type};
     this.connection.send(JSON.stringify(message));
   }
+}
+
+export default function(...args) {
+  // @ts-ignore
+  const client = new WormholeClient(...args);
+  return new Proxy({}, {
+    get(_, part: string) {
+      const firstLetter = part[0];
+
+      if (firstLetter === firstLetter.toUpperCase()) {
+        return client.remote;
+      }
+
+      return client[part];
+    },
+  });
 }
 
 const mapProvide = (module: string, methods: any) => {

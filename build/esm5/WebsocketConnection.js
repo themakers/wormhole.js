@@ -15,9 +15,10 @@ var __extends = (this && this.__extends) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 var events_1 = require("events");
 var defaultOptions = {
+    maxConnectionTimeout: 10,
     maxReconnects: Infinity,
     reconnect: true,
-    reconnectTimeout: 10,
+    reconnectTimeout: 1,
 };
 var WebsocketConnection = /** @class */ (function (_super) {
     __extends(WebsocketConnection, _super);
@@ -27,6 +28,9 @@ var WebsocketConnection = /** @class */ (function (_super) {
         _this.queue = [];
         _this.reconnects = 0;
         _this.freeze = false;
+        _this.disconnectTimeout = null;
+        // EventEmitter hack
+        _this.setMaxListeners(Number.MAX_SAFE_INTEGER);
         _this.options = Object.assign({}, defaultOptions, options || {});
         _this.connectionUrl = connectionUrl;
         return _this;
@@ -46,6 +50,7 @@ var WebsocketConnection = /** @class */ (function (_super) {
             socket_1.onclose = function (e) { return _this.onClose(e); };
             socket_1.onerror = function () { return _this.onError(); };
             socket_1.onmessage = function (e) { return _this.onMessage(e); };
+            this.disconnectTimeout = setTimeout(function () { return socket_1.close(); }, this.options.maxConnectionTimeout * 1000);
         }
         catch (e) {
             this.emit("error", e);
@@ -70,7 +75,7 @@ var WebsocketConnection = /** @class */ (function (_super) {
                 _this.reconnects++;
                 _this.reconnection = null;
                 _this.tryConnect();
-            }, this.options.reconnectTimeout);
+            }, this.options.reconnectTimeout * 1000);
         }
     };
     WebsocketConnection.prototype.drain = function () {
@@ -81,19 +86,20 @@ var WebsocketConnection = /** @class */ (function (_super) {
         }
     };
     WebsocketConnection.prototype.onOpen = function (socket) {
+        clearTimeout(this.disconnectTimeout);
         this.reconnects = 0;
         this.socket = socket;
         this.drain();
         this.emit("connect");
     };
     WebsocketConnection.prototype.onClose = function (event) {
+        clearTimeout(this.disconnectTimeout);
         this.socket = null;
         this.emit("disconnect", event);
-        if (!event.wasClean) {
-            this.tryReconnect();
-        }
+        this.tryReconnect();
     };
     WebsocketConnection.prototype.onError = function () {
+        clearTimeout(this.disconnectTimeout);
         this.socket = null;
         this.tryReconnect();
     };
@@ -101,6 +107,7 @@ var WebsocketConnection = /** @class */ (function (_super) {
         this.emit("message", event);
     };
     WebsocketConnection.prototype.tryReconnect = function () {
+        // tslint:disable-next-line:no-console
         if (this.reconnects < this.options.maxReconnects) {
             this.reconnect();
         }
