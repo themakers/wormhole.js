@@ -1,54 +1,41 @@
 import {EventEmitter} from "events";
 import {IWebsocketConnectionOptions} from "./types";
 
-const defaultOptions: IWebsocketConnectionOptions = {
+const DEFAULT_OPTIONS = {
   maxConnectionTimeout: 10,
   maxReconnects: Infinity,
   reconnect: true,
-  reconnectTimeout: 1,
+  reconnectTimeout: 2,
+  websocketOptions: {},
 };
 
 export default class WebsocketConnection extends EventEmitter {
-  private options: IWebsocketConnectionOptions;
-  private connectionUrl: string;
-  private socket: WebSocket = null;
-  private queue: string[] = [];
-  private reconnection: any;
+  private readonly options: IWebsocketConnectionOptions;
+  private readonly url: string;
+  private disconnected: boolean = false;
   private reconnects: number = 0;
-  private freeze: boolean = false;
-  private disconnectTimeout: any = null;
+  private socket: WebSocket = null;
+  private awaitConnection: Promise<void> = null;
+  private queue: any[] = [];
 
-  constructor(connectionUrl: string, options: IWebsocketConnectionOptions) {
+  constructor(url: string, options?: IWebsocketConnectionOptions) {
     super();
-    // EventEmitter hack
-    this.setMaxListeners(Number.MAX_SAFE_INTEGER);
-    this.options = Object.assign({}, defaultOptions, options || {} as IWebsocketConnectionOptions);
-    this.connectionUrl = connectionUrl;
+    this.url = url;
+    this.options = Object.assign({}, DEFAULT_OPTIONS, options) as IWebsocketConnectionOptions;
   }
 
   public connect() {
-    this.freeze = false;
-    this.reconnects = 0;
-    this.queue = [];
-    this.tryConnect();
-    return this;
-  }
-
-  public tryConnect() {
-    try {
-      const socket = new WebSocket(this.connectionUrl);
-      socket.onopen = () => this.onOpen(socket);
-      socket.onclose = (e) => this.onClose(e);
-      socket.onerror = () => this.onError();
-      socket.onmessage = (e) => this.onMessage(e);
-      this.disconnectTimeout = setTimeout(() => socket.close(), this.options.maxConnectionTimeout * 1000);
-    } catch (e) {
-      this.emit("error", e);
+    if (this.awaitConnection) {
+      return this.awaitConnection;
     }
-    return this;
+
+    this.reconnects = 0;
+    this.disconnected = false;
+    return this.awaitConnection = this.establishConnection();
   }
 
   public disconnect() {
+    this.disconnected = true;
     if (this.socket) {
       this.socket.close();
     }
@@ -59,57 +46,78 @@ export default class WebsocketConnection extends EventEmitter {
     this.drain();
   }
 
-  public reconnect() {
-    const canReconnect = this.socket === null;
-    if (canReconnect) {
-      clearTimeout(this.reconnection);
-      this.reconnection = setTimeout(() => {
-        this.reconnects++;
-        this.reconnection = null;
-        this.tryConnect();
-      }, this.options.reconnectTimeout * 1000);
+  private async establishConnection(): Promise<void> {
+    const {maxReconnects, reconnectTimeout} = this.options;
+
+    if (maxReconnects <= this.reconnects) {
+      throw new Error("UsedAttemptsReconnect");
+    }
+
+    try {
+      const socket = await this.connectWebsocket();
+      this.onEstablishConnection(socket);
+    } catch (e) {
+      this.reconnects++;
+      await sleepAsync(reconnectTimeout * 1000);
+      return this.establishConnection();
     }
   }
 
-  private drain() {
-    if (this.socket) {
-      this.queue.forEach((msg) => this.socket.send(msg));
-      this.queue = [];
-    }
+  private async connectWebsocket(): Promise<WebSocket> {
+    const {reconnectTimeout} = this.options;
+
+    return new Promise((resolve, reject) => {
+      const socket = new WebSocket(this.url);
+      this.applySocketOptions(socket);
+      socket.onopen = () => resolve(socket);
+      socket.onerror = socket.onclose = () => reject();
+    });
   }
 
-  private onOpen(socket) {
-    clearTimeout(this.disconnectTimeout);
-    this.reconnects = 0;
+  private applySocketOptions(socket: WebSocket) {
+    Object.entries(this.options.websocketOptions)
+      .forEach(([key, value]) => {
+        socket[key] = value;
+      });
+  }
+
+  private onEstablishConnection(socket: WebSocket) {
     this.socket = socket;
+    socket.onclose = () => this.onSocketClose();
+    socket.onerror = () => this.onSocketError();
+    socket.onmessage = (e: MessageEvent) => this.onSocketMessage(e);
     this.drain();
     this.emit("connect");
   }
 
-  private onClose(event: CloseEvent) {
-    clearTimeout(this.disconnectTimeout);
-    this.socket = null;
-    this.emit("disconnect", event);
-    this.tryReconnect();
+  private onSocketMessage(event: MessageEvent) {
+    this.emit("message", event.data);
   }
 
-  private onError() {
-    clearTimeout(this.disconnectTimeout);
-    this.socket = null;
-    this.tryReconnect();
+  private drain() {
+    if (!this.socket) {
+      return;
+    }
+    this.queue.forEach((msg) => this.socket.send(msg));
+    this.queue.length = 0;
   }
 
-  private onMessage(event: MessageEvent) {
-    this.emit("message", event);
-  }
+  private onDisconnect() {
+    this.emit("disconnect");
 
-  private tryReconnect() {
-    // tslint:disable-next-line:no-console
-    if (this.reconnects < this.options.maxReconnects) {
-      this.reconnect();
-    } else if (this.reconnects === this.options.maxReconnects && !this.freeze) {
-      this.freeze = true;
-      this.emit("error", new Error("UsedAttemptsReconnect"));
+    if (!this.disconnected) {
+      this.establishConnection()
+        .catch((e) => this.emit("error", e));
     }
   }
+
+  private onSocketClose() {
+    this.onDisconnect();
+  }
+
+  private onSocketError() {
+    this.onDisconnect();
+  }
 }
+
+const sleepAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

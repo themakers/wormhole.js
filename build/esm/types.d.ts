@@ -3,10 +3,11 @@ export interface IWebsocketConnectionOptions {
     reconnect: boolean;
     maxReconnects: number;
     reconnectTimeout: number;
+    websocketOptions: any;
 }
 export interface IWormholeClientOptions {
     connectionOptions: IWebsocketConnectionOptions;
 }
-export interface IWormholeRequest {
-    [key: string]: any;
+export interface ICallbacks {
+    [key: string]: () => void;
 }

@@ -1,121 +1,111 @@
-import { EventEmitter } from "events";
-import Request from "./Request";
-import { transformRequest, transformResponse } from "./util";
+import * as msgpack from "@msgpack/msgpack";
+import Call from "./Call";
+import Callable from "./Callable";
+import { WORMHOLE_TYPE_CALL } from "./constraints";
+import { CallMessage, ResultMessage } from "./Messages";
+import { mapProvide } from "./util";
 import WebsocketConnection from "./WebsocketConnection";
-const WORMHOLE_TYPE_CALL = "call";
-const WORMHOLE_TYPE_RESULT = "result";
-class WormholeClient extends EventEmitter {
-    constructor(connectionUrl, options) {
+class WormholeClient extends Callable {
+    constructor(url, options) {
         super();
-        this.options = {};
-        this.provides = {};
-        // tslint:disable-next-line:variable-name
-        this._onConnectionMessage = this.onConnectionMessage.bind(this);
-        if (!connectionUrl) {
-            throw new Error("connectionUrl required");
-        }
+        this.calls = [];
         this.options = options || {};
-        this.connection = new WebsocketConnection(connectionUrl, this.options.connectionOptions);
-        this.connection.on("message", this._onConnectionMessage);
+        const connectionOptions = this.options.connectionOptions || {};
+        connectionOptions.websocketOptions = Object.assign(connectionOptions.websocketOptions || {}, { binaryType: "arraybuffer" });
+        this.connection = new WebsocketConnection(url, connectionOptions);
+        this.connection.on("message", (message) => this.onConnectionMessage(message));
     }
     connect() {
         return this.connection.connect();
     }
-    getConnection() {
-        return this.connection;
-    }
     disconnect() {
-        this.connection.disconnect();
-        return this;
+        return this.connection.disconnect();
     }
-    get remote() {
-        return this.getRemoteProxy();
+    provide(service, methods) {
+        this.addCallbacks(mapProvide(service, methods));
     }
-    provide(module, methods) {
-        Object.assign(this.provides, mapProvide(module, methods));
-        return this;
+    call(part) {
+        const parts = [part];
+        const call = (message) => {
+            return this.send(parts.join("."), message);
+        };
+        const proxy = new Proxy(call, {
+            get(target, p) {
+                parts.push(p);
+                return proxy;
+            },
+        });
+        return proxy;
     }
-    createRequest(path, request) {
-        return new Request(path, request, this.connection);
-    }
-    onConnectionMessage(event) {
+    onConnectionMessage(message) {
         try {
-            const data = JSON.parse(event.data);
-            if (data.Type === WORMHOLE_TYPE_CALL) {
-                this.callProvideMethod(data.Payload);
-            }
+            this.onReceiveMessage(msgpack.decode(new Uint8Array(message)));
         }
         catch (e) {
             // Do nothing
         }
     }
-    getRemoteProxy() {
-        const self = this;
-        const path = [];
-        function call(request) {
-            return self.createRequest(path.join("."), request);
-        }
-        const handler = {
-            get(_, part) {
-                if (!part.startsWith("Symbol")) {
-                    path.push(part);
-                }
-                return proxy;
-            },
-        };
-        const proxy = new Proxy(call, handler);
-        return proxy;
+    send(ref, message) {
+        const call = new Call(ref, message);
+        this.calls.push(call);
+        this.sendMessage(call.request());
+        return call.promise();
     }
-    callProvideMethod(data) {
-        const key = data.Ref;
-        if (!this.provides[key]) {
-            return;
-        }
-        const args = transformResponse(data.Vars);
-        const payload = {
-            Call: data.ID,
-            Meta: null,
-            Result: { Vals: [], Error: "" },
-        };
-        // @ts-ignore
-        Promise.resolve(this.provides[key](...args))
-            .then((result) => transformRequest(result))
-            .then((result) => {
-            // @ts-ignore
-            payload.Result.Vals = result.payload;
-        })
-            .catch((error) => {
-            payload.Result.Error = String(error);
-        })
-            .finally(() => {
-            this.sendMessage(WORMHOLE_TYPE_RESULT, payload);
-        });
+    sendMessage(message) {
+        const buffer = msgpack.encode(message);
+        this.connection.send(buffer);
     }
-    sendMessage(type, payload) {
-        const message = { Payload: payload, Type: type };
-        this.connection.send(JSON.stringify(message));
+    onReceiveMessage(message) {
+        const type = message[1];
+        if (type === WORMHOLE_TYPE_CALL) {
+            this.onReceiveCall(message);
+        }
+        else {
+            this.onReceiveResult(message);
+        }
+    }
+    onReceiveCall(msg) {
+        const message = new CallMessage().decode(msg);
+        const call = this.calls.find((c) => c.hasAcceptMessage(message.ref));
+        const parent = call || this;
+        parent.executeCallback(message.ref, message.payload).then((result) => [result, null])
+            .catch((e) => [null, e])
+            .then((payload) => new ResultMessage({ id: message.id, ref: message.ref, payload }).encode())
+            .then((data) => this.sendMessage(data));
+    }
+    onReceiveResult(msg) {
+        const message = new ResultMessage().decode(msg);
+        const call = this.calls.find((c) => c.hasAcceptMessage(message.id));
+        if (call) {
+            call.receiveResult(message);
+            this.onDoneCall(call);
+        }
+    }
+    onDoneCall(call) {
+        this.calls = this.calls.filter((c) => c !== call);
+    }
+    onDisconnect() {
+        this.emit("disconnect");
+    }
+    onConnectionError(e) {
+        this.emit("error", e);
     }
 }
-export default function (...args) {
-    // @ts-ignore
-    const client = new WormholeClient(...args);
-    return new Proxy({}, {
-        get(_, part) {
-            const firstLetter = part[0];
-            if (firstLetter === firstLetter.toUpperCase()) {
-                return client.remote;
+export default (url, options) => {
+    const client = new WormholeClient(url, options);
+    return new Proxy(client, {
+        get(target, p) {
+            if (isUpperCaseFirstLetter(p)) {
+                return client.call(p);
             }
-            return client[part];
+            else {
+                return client[p];
+            }
         },
     });
-}
-const mapProvide = (module, methods) => {
-    const result = {};
-    for (const method in methods) {
-        if (methods.hasOwnProperty(method)) {
-            result[`${module}.${method}`] = methods[method];
-        }
-    }
-    return result;
+};
+const isUpperCaseFirstLetter = (val) => {
+    const stringVal = String(val);
+    return stringVal[0].toUpperCase() === stringVal[0];
 };
 //# sourceMappingURL=WormholeClient.js.map

@@ -7,16 +7,28 @@
 <body>
 <script src="build/umd/bundle.js"></script>
 <script>
-  const client = new Wormhole('ws://localhost:7532')
+  const client = new Wormhole('ws://localhost:7532');
 
+  client.connect().then(() => {
+    console.log('connected')
+    // client.disconnect();
+  }).catch(() => {
+    console.log('error when client.connect()')
+  });
 
-  client.connect()
+  client.provide('Greeter', {
+    Hello: ({Message, CallableRef}) => {
+      return {Message: 'HELLO'}
+    }
+  })
 
   client.Greeter.Hello({
     Message: 'Message',
     CallableRef: () => {
-      return 'CallableRef'
+      return 'callback result'
     }
+  }).then(result => {
+    console.log('call result', result)
   })
 
 </script>
