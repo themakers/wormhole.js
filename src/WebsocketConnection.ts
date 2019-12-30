@@ -58,7 +58,7 @@ export default class WebsocketConnection extends EventEmitter {
       this.onEstablishConnection(socket);
     } catch (e) {
       this.reconnects++;
-      await sleepAsync(reconnectTimeout * 1000);
+      await sleep(reconnectTimeout * 1000);
       return this.establishConnection();
     }
   }
@@ -120,4 +120,4 @@ export default class WebsocketConnection extends EventEmitter {
   }
 }
 
-const sleepAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
