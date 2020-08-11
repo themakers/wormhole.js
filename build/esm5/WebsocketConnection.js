@@ -109,7 +109,7 @@ var WebsocketConnection = /** @class */ (function (_super) {
                     case 3:
                         e_1 = _b.sent();
                         this.reconnects++;
-                        return [4 /*yield*/, sleepAsync(reconnectTimeout * 1000)];
+                        return [4 /*yield*/, sleep(reconnectTimeout * 1000)];
                     case 4:
                         _b.sent();
                         return [2 /*return*/, this.establishConnection()];
@@ -177,5 +177,5 @@ var WebsocketConnection = /** @class */ (function (_super) {
     return WebsocketConnection;
 }(events_1.EventEmitter));
 exports.default = WebsocketConnection;
-var sleepAsync = function (ms) { return new Promise(function (resolve) { return setTimeout(resolve, ms); }); };
+var sleep = function (ms) { return new Promise(function (resolve) { return setTimeout(resolve, ms); }); };
 //# sourceMappingURL=WebsocketConnection.js.map

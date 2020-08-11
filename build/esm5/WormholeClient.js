@@ -124,12 +124,12 @@ var WormholeClient = /** @class */ (function (_super) {
 exports.default = (function (url, options) {
     var client = new WormholeClient(url, options);
     return new Proxy(client, {
-        get: function (target, p) {
-            if (isUpperCaseFirstLetter(p)) {
-                return client.call(p);
+        get: function (target, path) {
+            if (isUpperCaseFirstLetter(path)) {
+                return client.call(path);
             }
             else {
-                return client[p];
+                return client[path];
             }
         },
     });

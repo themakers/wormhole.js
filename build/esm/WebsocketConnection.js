@@ -56,7 +56,7 @@ export default class WebsocketConnection extends EventEmitter {
             }
             catch (e) {
                 this.reconnects++;
-                yield sleepAsync(reconnectTimeout * 1000);
+                yield sleep(reconnectTimeout * 1000);
                 return this.establishConnection();
             }
         });
@@ -110,5 +110,5 @@ export default class WebsocketConnection extends EventEmitter {
         this.onDisconnect();
     }
 }
-const sleepAsync = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 //# sourceMappingURL=WebsocketConnection.js.map

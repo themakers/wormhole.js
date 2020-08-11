@@ -117,11 +117,11 @@ export default (url: string, options?: IWormholeClientOptions) => {
   const client = new WormholeClient(url, options);
 
   return new Proxy(client, {
-    get(target: WormholeClient, p: string | number | symbol): any {
-      if (isUpperCaseFirstLetter(p)) {
-        return client.call(p);
+    get(target: WormholeClient, path: string | number | symbol): any {
+      if (isUpperCaseFirstLetter(path)) {
+        return client.call(path);
       } else {
-        return client[p];
+        return client[path];
       }
     },
   });
